@@ -9,6 +9,7 @@ import java.net.Socket;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ServerConnection extends Thread {
+    private int myId;
     private Socket connection;
     private DataInputStream in;
 
@@ -17,7 +18,8 @@ public class ServerConnection extends Thread {
 
     private ConcurrentLinkedQueue<byte[]> messageQueue;
 
-    ServerConnection(Socket connection, MessageHandler messageHandler, LogWriter logWriter) {
+    ServerConnection(Socket connection, int myId, MessageHandler messageHandler, LogWriter logWriter) {
+        this.myId = myId;
         this.connection = connection;
         this.logWriter = logWriter;
         this.messageHandler = messageHandler;
@@ -35,7 +37,7 @@ public class ServerConnection extends Thread {
                     byte[] bytes = new byte[32];
                     in.readFully(bytes);
                     peerId = messageHandler.handleHandShakeMessage(bytes);
-                    // TODO log
+                    new LogWriter().tcpConnectionFrom(myId, peerId);
                 }
             } catch (Exception e) {
                 System.out.println("illegal handshake message. " + e);

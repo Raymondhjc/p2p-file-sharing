@@ -87,7 +87,7 @@ public class Peer implements MessageHandler{
     }
 
     private void startServer() {
-        server = new Server();
+        server = new Server(myId);
         new Thread(() -> {
             try {
                 // start the server
@@ -168,8 +168,8 @@ public class Peer implements MessageHandler{
                         for(int i = 0; i <= randomIndex; ++i) {
                             newOptimisticallyUnchokedNeighbor = iterator.next();
                         }
-                        if (newOptimisticallyUnchokedNeighbor != optimisticallyUnchockedNeighbor &&
-                                !preferredNeighbors.contains(newOptimisticallyUnchokedNeighbor)) {
+                        if (interested.size() <= preferredNeighbors.size() + 1 || (newOptimisticallyUnchokedNeighbor != optimisticallyUnchockedNeighbor &&
+                                !preferredNeighbors.contains(newOptimisticallyUnchokedNeighbor))) {
                             break;
                         }
                     }
@@ -317,7 +317,7 @@ public class Peer implements MessageHandler{
             }
         }
         if (interestFlag) return MessageFactory.interestedMessage();
-        return null;
+        return MessageFactory.uninterestedMessage();
     }
 
     private ActualMessage handleRequestMessage(byte[] payload, int peerId) {
@@ -341,10 +341,12 @@ public class Peer implements MessageHandler{
         updateBitField(Arrays.copyOfRange(payload, 0, 4));
 
         // finally should send not interested to some nodes
+        int currentPieceNum = 0;
         int len = preferredNeighbors.size();
         for(int i = 0; i < len; i++) {
             int preferredNeighborID = preferredNeighbors.get(i);
-            if(hasCompleteFiles() || containAllNeighborFiles(preferredNeighborID)) {
+            currentPieceNum = countPiece();
+            if(currentPieceNum == myBitField.length || containAllNeighborFiles(preferredNeighborID)) {
                 ActualMessage respMessage = MessageFactory.uninterestedMessage();
                 clients.get(peerId).sendMessage(respMessage);
             }
@@ -355,24 +357,26 @@ public class Peer implements MessageHandler{
                 return requestPiece(peerId);
             }
         }
+        logWriter.downloadPiece(myId, peerId, pieceIndex, currentPieceNum);
         return MessageFactory.uninterestedMessage();
     }
 
-    public void updateBitField(byte[] payload) {
+    private void updateBitField(byte[] payload) {
         int pieceIndex = ByteBuffer.wrap(payload).getInt();
         myBitField[pieceIndex] = true;
     }
 
-    public boolean hasCompleteFiles() {
+    private int countPiece() {
+        int cnt = 0;
         for(boolean hasFile : myBitField) {
-            if(!hasFile) {
-                return false;
+            if(hasFile) {
+                ++cnt;
             }
         }
-        return true;
+        return cnt;
     }
 
-    public boolean containAllNeighborFiles(int neighborId) {
+    private boolean containAllNeighborFiles(int neighborId) {
         boolean[] neighborBitField = bitMap.get(neighborId);
         int len = neighborBitField.length;
         for(int i = 0; i < len; i++) {

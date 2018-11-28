@@ -16,8 +16,8 @@ public class ActualMessage {
     }
 
     public ActualMessage(byte[] bytes) {
-        type = ByteBuffer.wrap(Arrays.copyOfRange(bytes, 0, 1)).getInt();
-        payload = Arrays.copyOfRange(bytes, 0, 1);
+        type = ByteBuffer.wrap(Arrays.copyOfRange(bytes, 0, 1)).get();
+        payload = Arrays.copyOfRange(bytes, 1, bytes.length);
     }
 
     ActualMessage (int type, byte[] payload) {
@@ -28,13 +28,19 @@ public class ActualMessage {
     public byte[] toByteArray() {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try {
-            bytes.write(4 + this.payload.length);
+            if(this.payload == null) {
+                bytes.write(ByteBuffer.allocate(4).putInt(1).array());
+            } else {
+                bytes.write(ByteBuffer.allocate(4).putInt(payload.length).array());
+            }
             bytes.write(this.type);
-            bytes.write(this.payload);
+            if(payload != null) {
+                bytes.write(this.payload, 0, this.payload.length);
+            }
         } catch(Exception e) {
             System.out.println("writing actual message error");
+            e.printStackTrace();
         }
-
         return bytes.toByteArray();
     }
 }
