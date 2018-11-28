@@ -1,6 +1,7 @@
 package connections;
 
 import configs.PeerInfo;
+import log.LogWriter;
 import messages.ActualMessage;
 import messages.HandshakeMessage;
 
@@ -35,6 +36,8 @@ public class Client extends Thread{
 
             out.write(hsMsg.toByteArray());
             out.flush();
+
+            new LogWriter().tcpConnectionTo(myId, peerInfo.getPeerId());
 
             while (true) {
                 while(!messageQueue.isEmpty()) {
