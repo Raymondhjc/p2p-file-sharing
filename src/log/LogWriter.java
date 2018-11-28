@@ -9,7 +9,10 @@ import java.util.Date;
 public class LogWriter {
     // Create log: filename = 'log_peer_[peerID].log'
     public void createLogFile(int peerID) {
-        String filename = "log_peer_" + peerID + ".log";
+        String filename = "peer_" + peerID + "/log_peer_" + peerID + ".log";
+        File output = new File("peer_" + peerID);
+        output.mkdir();
+
         File file = new File(filename);
 
         try {
@@ -33,7 +36,7 @@ public class LogWriter {
     }
 
     public void tcpConnectionTo(int peer_id_1, int peer_id_2) {
-        String filename = "log_peer_" + peer_id_1 + ".log";
+        String filename = "peer_" + peer_id_1 + "/log_peer_" + peer_id_1 + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id_1);
@@ -51,7 +54,7 @@ public class LogWriter {
     }
 
     public void tcpConnectionFrom(int peer_id_1, int peer_id_2) {
-        String filename = "log_peer_" + peer_id_1 + ".log";
+        String filename = "peer_" + peer_id_1 + "/log_peer_" + peer_id_1 + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id_1);
@@ -69,7 +72,7 @@ public class LogWriter {
     }
 
     public void changePreferredNeighbors(int peer_id, int[] neighbors_list) {
-        String filename = "log_peer_" + peer_id + ".log";
+        String filename = "peer_" + peer_id + "/log_peer_" + peer_id + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id);
@@ -91,7 +94,7 @@ public class LogWriter {
     }
 
     public void changeOptimisticallyUnchockedNeighbor(int peer_id, int opt_neighbor_id) {
-        String filename = "log_peer_" + peer_id + ".log";
+        String filename = "peer_" + peer_id + "/log_peer_" + peer_id + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id);
@@ -109,7 +112,7 @@ public class LogWriter {
     }
 
     public void unchoking(int peer_id_1, int peer_id_2) {
-        String filename = "log_peer_" + peer_id_1 + ".log";
+        String filename = "peer_" + peer_id_1 + "/log_peer_" + peer_id_1 + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id_1);
@@ -127,7 +130,7 @@ public class LogWriter {
     }
 
     public void choking(int peer_id_1, int peer_id_2) {
-        String filename = "log_peer_" + peer_id_1 + ".log";
+        String filename = "peer_" + peer_id_1 + "/log_peer_" + peer_id_1 + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id_1);
@@ -145,7 +148,7 @@ public class LogWriter {
     }
 
     public void receiveHaveMessage(int peer_id_1, int peer_id_2, int index) {
-        String filename = "log_peer_" + peer_id_1 + ".log";
+        String filename = "peer_" + peer_id_1 + "/log_peer_" + peer_id_1 + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id_1);
@@ -163,7 +166,7 @@ public class LogWriter {
     }
 
     public void receiveInterestedMessage(int peer_id_1, int peer_id_2) {
-        String filename = "log_peer_" + peer_id_1 + ".log";
+        String filename = "peer_" + peer_id_1 + "/log_peer_" + peer_id_1 + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id_1);
@@ -181,7 +184,7 @@ public class LogWriter {
     }
 
     public void receiveNotInterestedMessage(int peer_id_1, int peer_id_2) {
-        String filename = "log_peer_" + peer_id_1 + ".log";
+        String filename = "peer_" + peer_id_1 + "/log_peer_" + peer_id_1 + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id_1);
@@ -199,7 +202,7 @@ public class LogWriter {
     }
 
     public void downloadPiece(int peer_id_1, int peer_id_2, int index, int piece_num) {
-        String filename = "log_peer_" + peer_id_1 + ".log";
+        String filename = "peer_" + peer_id_1 + "/log_peer_" + peer_id_1 + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id_1);
@@ -217,7 +220,7 @@ public class LogWriter {
     }
 
     public void completionOfDownload(int peer_id) {
-        String filename = "log_peer_" + peer_id + ".log";
+        String filename = "peer_" + peer_id + "/log_peer_" + peer_id + ".log";
         File file = new File(filename);
         if(!file.exists()) {
             createLogFile(peer_id);
