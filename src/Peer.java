@@ -20,11 +20,12 @@ public class Peer implements MessageHandler{
     private Server server;
 
     private int optimisticallyUnchockedNeighbor;
-    private Map<Integer, Client> clients;
+    private ConcurrentHashMap<Integer, Client> clients;
     private Set<Integer> interested;
-    private Map<Integer, boolean[]> bitMap;
-    private Map<Integer, PeerInfo> peerInfoMap;
+    private ConcurrentHashMap<Integer, boolean[]> bitMap;
+    private ConcurrentHashMap<Integer, PeerInfo> peerInfoMap;
     private ConcurrentHashMap<Integer, Integer> downloadRateMap;
+    private ConcurrentHashMap<Integer, Integer> requestedMap;
 
     private Vector<Integer> preferredNeighbors;
 
@@ -34,15 +35,17 @@ public class Peer implements MessageHandler{
         this.myId = peerId;
         this.commonInfo = commonInfo;
         this.logWriter = new LogWriter();
-        // init bit field
 
-        this.clients = new HashMap<>();
+        this.clients = new ConcurrentHashMap<>();
         this.interested = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
-        this.bitMap = new HashMap<>();
-        this.peerInfoMap = new HashMap<>();
+        this.bitMap = new ConcurrentHashMap<>();
+        this.peerInfoMap = new ConcurrentHashMap<>();
         this.downloadRateMap = new ConcurrentHashMap<>();
+        this.requestedMap = new ConcurrentHashMap<>();
 
         this.myBitField = new boolean[commonInfo.getFileSize() / commonInfo.getPieceSize() + 1];
+
+        server = new Server(peerId);
     }
 
     public void start(List<PeerInfo> peerList) throws Exception {
@@ -55,7 +58,7 @@ public class Peer implements MessageHandler{
 
         // load this peer config
         if(myPeerInfo.hasFile()) {
-
+            Arrays.fill(myBitField, true);
         }
 
         // start the server
@@ -64,10 +67,14 @@ public class Peer implements MessageHandler{
         // init clients, start the client whose id before it
         for(PeerInfo info : peerList) {
             if(info.getPeerId() < myId) {
+                clients.put(info.getPeerId(), new Client(info));
                 clients.get(info.getPeerId()).start();
             }
         }
 
+        getPreferredPeers();
+
+        getOptiUnchokedPeers();
     }
 
     private void getPreferredPeers() {
@@ -104,23 +111,13 @@ public class Peer implements MessageHandler{
                 for (Integer newPreferredNeighbor : nextPreferredNeighbors) {
                     if (!preferredNeighbors.contains(newPreferredNeighbor)) {
                         // new comer
-                        try {
-                            clients.get(newPreferredNeighbor).start();
-                            // TODO send unchoke message to that neighbor
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
+                        clients.get(newPreferredNeighbor).sendMessage(MessageFactory.unchockMessage());
                     }
                 }
 
                 for (Integer oldPreferredNeighbor : preferredNeighbors) {
                     if (!nextPreferredNeighbors.contains(oldPreferredNeighbor)) {
-                        try {
-                            clients.get(oldPreferredNeighbor).start();
-                            // TODO send choke message to that neighbor
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
+                        clients.get(oldPreferredNeighbor).sendMessage(MessageFactory.chockMessage());
                     }
                 }
                 preferredNeighbors = nextPreferredNeighbors;
@@ -151,15 +148,13 @@ public class Peer implements MessageHandler{
                     }
                 }
                 try {
-                    clients.get(newOptimisticallyUnchokedNeighbor);
-                    // TODO send unchoke
+                    clients.get(newOptimisticallyUnchokedNeighbor).sendMessage(MessageFactory.unchockMessage());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 if (!preferredNeighbors.contains(optimisticallyUnchockedNeighbor)) {
                     try {
-                        clients.get(optimisticallyUnchockedNeighbor);
-                        // TODO send choke
+                        clients.get(newOptimisticallyUnchokedNeighbor).sendMessage(MessageFactory.chockMessage());
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -178,8 +173,12 @@ public class Peer implements MessageHandler{
         } catch (Exception e) {
             System.out.println("handshake message error: " + e);
         }
+        if(!bitMap.containsKey(peerId)) {
+            clients.put(peerId, new Client(peerInfoMap.get(peerId)));
+            clients.get(peerId).start();
+        }
         if(!allFalse(myBitField)) {
-            MessageFactory.bitfieldMessage(myBitField);
+            clients.get(peerId).sendMessage(MessageFactory.bitfieldMessage(myBitField));
         }
         return peerId;
     }
@@ -230,8 +229,10 @@ public class Peer implements MessageHandler{
     }
 
     private ActualMessage handleChockMessage(byte[] payload, int peerId) {
-        //logger
-        // TODO check request map
+        // TODO logger
+        if (requestedMap.containsKey(peerId)) {
+            requestedMap.remove(peerId);
+        }
         return null;
     }
 
@@ -303,7 +304,10 @@ public class Peer implements MessageHandler{
             return null;
         }
         int i = new Random().nextInt(missingPieceSize);
+        while(requestedMap.containsValue(index.get(i))) {
+            i = new Random().nextInt(missingPieceSize);
+        }
+        requestedMap.put(peerId, index.get(i));
         return MessageFactory.requestMessage(index.get(i));
     }
-
 }

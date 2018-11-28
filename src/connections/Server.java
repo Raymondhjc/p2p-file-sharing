@@ -10,7 +10,7 @@ public class Server {
     ServerSocket serverSocket;
     private int peerId;
 
-    Server(int peerId) {
+    public Server(int peerId) {
         this.peerId = peerId;
     }
 

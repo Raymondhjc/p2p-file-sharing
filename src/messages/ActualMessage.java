@@ -27,6 +27,13 @@ public class ActualMessage {
 
     public byte[] toByteArray() {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try {
+            bytes.write(4 + this.payload.length);
+            bytes.write(this.type);
+            bytes.write(this.payload);
+        } catch(Exception e) {
+            System.out.println("writing actual message error");
+        }
 
         return bytes.toByteArray();
     }

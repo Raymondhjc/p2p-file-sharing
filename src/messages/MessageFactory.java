@@ -9,7 +9,7 @@ public class MessageFactory {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         bytes.write(pieceIndex);
         byte[] payload = bytes.toByteArray();
-        return new ActualMessage(7, payload);
+        return new ActualMessage(6, payload);
     }
 
     public static ActualMessage interestedMessage() {
@@ -27,6 +27,14 @@ public class MessageFactory {
             bytes[i / 8] += bitfield[i] ? 1 : 0;
         }
         return new ActualMessage(5, bytes);
+    }
+
+    public static ActualMessage chockMessage() {
+        return new ActualMessage(0, null);
+    }
+
+    public static ActualMessage unchockMessage() {
+        return new ActualMessage(1, null);
     }
 
 }
