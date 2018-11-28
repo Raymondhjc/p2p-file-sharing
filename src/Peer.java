@@ -28,6 +28,7 @@ public class Peer implements MessageHandler{
     private ConcurrentHashMap<Integer, PeerInfo> peerInfoMap;
     private ConcurrentHashMap<Integer, Integer> downloadRateMap;
     private ConcurrentHashMap<Integer, Integer> requestedMap;
+    private Set<Integer> hasHandshaked;
 
     private Vector<Integer> preferredNeighbors;
 
@@ -45,17 +46,17 @@ public class Peer implements MessageHandler{
         this.downloadRateMap = new ConcurrentHashMap<>();
         this.requestedMap = new ConcurrentHashMap<>();
 
+        this.hasHandshaked = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
+
         this.myBitField = new boolean[commonInfo.getFileSize() / commonInfo.getPieceSize() + 1];
 
-        server = new Server(peerId);
+        this.preferredNeighbors = new Vector<>();
+        this.optimisticallyUnchockedNeighbor = -1;
     }
 
     public void start(List<PeerInfo> peerList) throws Exception {
         // load neighbor info
         for(PeerInfo info : peerList) {
-            System.out.println(info.getPeerId());
-            System.out.println(myId);
-            System.out.println(peerList.size());
             if(info.getPeerId() != myId) {
                 peerInfoMap.put(info.getPeerId(), info);
             } else {
@@ -68,13 +69,14 @@ public class Peer implements MessageHandler{
             Arrays.fill(myBitField, true);
         }
 
-        // start the server
-        server.startServer(myPeerInfo.getPeerPort(), this, logWriter);
+        //start server
+        startServer();
 
         // init clients, start the client whose id before it
         for(PeerInfo info : peerList) {
             if(info.getPeerId() < myId) {
-                clients.put(info.getPeerId(), new Client(info));
+                hasHandshaked.add(info.getPeerId());
+                clients.put(info.getPeerId(), new Client(myId, info));
                 clients.get(info.getPeerId()).start();
             }
         }
@@ -82,6 +84,24 @@ public class Peer implements MessageHandler{
         getPreferredPeers();
 
         getOptiUnchokedPeers();
+    }
+
+    private void startServer() {
+        server = new Server();
+        new Thread(() -> {
+            try {
+                // start the server
+                server.startServer(myPeerInfo.getPeerPort(), this, logWriter);
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            } finally {
+                try {
+                    server.closeServer();
+                } catch (Exception e2) {
+                    e2.printStackTrace();
+                }
+            }
+        }).start();
     }
 
     private void getPreferredPeers() {
@@ -155,13 +175,17 @@ public class Peer implements MessageHandler{
                     }
                 }
                 try {
-                    clients.get(newOptimisticallyUnchokedNeighbor).sendMessage(MessageFactory.unchockMessage());
+                    if(clients.size() != 0 && newOptimisticallyUnchokedNeighbor != -1) {
+                        clients.get(newOptimisticallyUnchokedNeighbor).sendMessage(MessageFactory.unchockMessage());
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 if (!preferredNeighbors.contains(optimisticallyUnchockedNeighbor)) {
                     try {
-                        clients.get(newOptimisticallyUnchokedNeighbor).sendMessage(MessageFactory.chockMessage());
+                        if(clients.size() != 0 && optimisticallyUnchockedNeighbor != -1) {
+                            clients.get(newOptimisticallyUnchokedNeighbor).sendMessage(MessageFactory.chockMessage());
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -177,14 +201,17 @@ public class Peer implements MessageHandler{
         try {
             HandshakeMessage hsm = new HandshakeMessage(bytes);
             peerId = hsm.getPeerId();
+            System.out.println(myId + " received handshake from " + peerId);
         } catch (Exception e) {
             System.out.println("handshake message error: " + e);
         }
-        if(!bitMap.containsKey(peerId)) {
-            clients.put(peerId, new Client(peerInfoMap.get(peerId)));
+        if(!hasHandshaked.contains(peerId)) {
+            clients.put(peerId, new Client(myId, peerInfoMap.get(peerId)));
             clients.get(peerId).start();
+            hasHandshaked.add(peerId);
         }
         if(!allFalse(myBitField)) {
+            System.out.println("sent bitfield to " + peerId);
             clients.get(peerId).sendMessage(MessageFactory.bitfieldMessage(myBitField));
         }
         return peerId;
@@ -236,7 +263,7 @@ public class Peer implements MessageHandler{
     }
 
     private ActualMessage handleChockMessage(byte[] payload, int peerId) {
-        // TODO logger
+        logWriter.choking(myId, peerId);
         if (requestedMap.containsKey(peerId)) {
             requestedMap.remove(peerId);
         }
@@ -244,17 +271,18 @@ public class Peer implements MessageHandler{
     }
 
     private ActualMessage handleUnchockMessage(byte[] payload, int peerId) {
-        // logger
+        logWriter.unchoking(myId, peerId);
         return requestPiece(peerId);
     }
 
     private ActualMessage handleInterestedMessage(byte[] payload, int peerId) {
-//        logWriter.receiveInterestedMessage(myId, peerId);
+        logWriter.receiveInterestedMessage(myId, peerId);
         interested.add(peerId);
         return null;
     }
 
     private ActualMessage handleUnInterestedMessage(byte[] payload, int peerId) {
+        logWriter.receiveNotInterestedMessage(myId, peerId);
         if(interested.contains(peerId)) {
             interested.remove(peerId);
         }
@@ -263,6 +291,7 @@ public class Peer implements MessageHandler{
 
     private ActualMessage handleHaveMessage(byte[] payload, int peerId) {
         int index = ByteBuffer.wrap(payload).getInt();
+        logWriter.receiveHaveMessage(myId, peerId, index);
         bitMap.get(peerId)[index] = true;
         if(!myBitField[index]) {
             return MessageFactory.interestedMessage();
