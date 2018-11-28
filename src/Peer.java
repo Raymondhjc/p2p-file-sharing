@@ -2,12 +2,14 @@ import configs.CommonInfo;
 import configs.PeerInfo;
 import connections.Client;
 import connections.Server;
+import file.FileHandler;
 import log.LogWriter;
 import messages.ActualMessage;
 import messages.HandshakeMessage;
 import messages.MessageFactory;
 import messages.MessageHandler;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,8 +53,13 @@ public class Peer implements MessageHandler{
     public void start(List<PeerInfo> peerList) throws Exception {
         // load neighbor info
         for(PeerInfo info : peerList) {
+            System.out.println(info.getPeerId());
+            System.out.println(myId);
+            System.out.println(peerList.size());
             if(info.getPeerId() != myId) {
                 peerInfoMap.put(info.getPeerId(), info);
+            } else {
+                myPeerInfo = info;
             }
         }
 
@@ -285,11 +292,69 @@ public class Peer implements MessageHandler{
     }
 
     private ActualMessage handleRequestMessage(byte[] payload, int peerId) {
-
+        return MessageFactory.pieceMessage(payload, myId, commonInfo);
     }
 
     private ActualMessage handlePieceMessage(byte[] payload, int peerId) {
+        int pieceIndex = ByteBuffer.wrap(Arrays.copyOfRange(payload, 0, 4)).getInt();
+        byte[] content = Arrays.copyOfRange(payload, 4, payload.length);
+        FileHandler fh = new FileHandler(commonInfo);
+        try {
+            fh.writePiece(pieceIndex, myId, content);
+        }catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        requestedMap.remove(peerId, pieceIndex);
+        downloadRateMap.put(peerId, downloadRateMap.getOrDefault(peerId, 0) + 1);
+
+        // update bitfield
+        updateBitField(Arrays.copyOfRange(payload, 0, 4));
+
         // finally should send not interested to some nodes
+        int len = preferredNeighbors.size();
+        for(int i = 0; i < len; i++) {
+            int preferredNeighborID = preferredNeighbors.get(i);
+            if(hasCompleteFiles() || containAllNeighborFiles(preferredNeighborID)) {
+                ActualMessage respMessage = MessageFactory.uninterestedMessage();
+                clients.get(peerId).sendMessage(respMessage);
+            }
+        }
+
+        if(!containAllNeighborFiles(peerId)) {
+            if(preferredNeighbors.contains(peerId)) {
+                return requestPiece(peerId);
+            }
+        }
+        return MessageFactory.uninterestedMessage();
+    }
+
+    public void updateBitField(byte[] payload) {
+        int pieceIndex = ByteBuffer.wrap(payload).getInt();
+        myBitField[pieceIndex] = true;
+    }
+
+    public boolean hasCompleteFiles() {
+        for(boolean hasFile : myBitField) {
+            if(!hasFile) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean containAllNeighborFiles(int neighborId) {
+        boolean[] neighborBitField = bitMap.get(neighborId);
+        int len = neighborBitField.length;
+        for(int i = 0; i < len; i++) {
+            if(neighborBitField[i]) {
+                if(!myBitField[i]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+
     }
 
     private ActualMessage requestPiece(int peerId) {

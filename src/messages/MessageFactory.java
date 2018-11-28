@@ -1,6 +1,11 @@
 package messages;
 
+import configs.CommonInfo;
+import file.FileHandler;
+
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Vector;
 
 public class MessageFactory {
@@ -37,4 +42,27 @@ public class MessageFactory {
         return new ActualMessage(1, null);
     }
 
+    public static ActualMessage pieceMessage(byte[] payload, int readFromIndex, CommonInfo commonInfo) {
+        int pieceIndex = ByteBuffer.wrap(payload).getInt();
+        FileHandler fh = new FileHandler(commonInfo);
+
+        byte[] content;
+        int fileSize = commonInfo.getFileSize();
+        int pieceSize = commonInfo.getPieceSize();
+        int remainingBytes = fileSize - pieceIndex * pieceSize;
+        if (remainingBytes < pieceSize) {
+            content = new byte[remainingBytes];
+        } else {
+            content = new byte[pieceSize];
+        }
+        try {
+            content = fh.readPiece(pieceIndex, readFromIndex);
+        }catch (IOException e) {
+            e.printStackTrace();
+        }
+        byte[] newPayload = new byte[payload.length + content.length];
+        System.arraycopy(payload, 0, newPayload, 0, payload.length);
+        System.arraycopy(content, 0, newPayload, payload.length, content.length);
+        return new ActualMessage(7, newPayload);
+    }
 }

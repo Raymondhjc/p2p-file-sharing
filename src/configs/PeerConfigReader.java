@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PeerConfigReader {
-    public static List<PeerInfo> readPeerComfig(String peerConfigDir) {
+    public static List<PeerInfo> readPeerConfig(String peerConfigDir) {
         String st;
         List<PeerInfo> list = new ArrayList<>();
         try {

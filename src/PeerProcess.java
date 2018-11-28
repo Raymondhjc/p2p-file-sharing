@@ -11,7 +11,7 @@ public class PeerProcess {
             System.out.println("expect argument peer ID");
         }
         CommonInfo commonInfo = CommonConfigReader.readCommonConfig("Common.cfg");
-        List<PeerInfo> peerList = PeerConfigReader.readPeerComfig("PeerInfo.cfg");
+        List<PeerInfo> peerList = PeerConfigReader.readPeerConfig("PeerInfo.cfg");
         int peerId = Integer.parseInt(args[0]);;
         Peer peer = new Peer(peerId, commonInfo);
         try {
