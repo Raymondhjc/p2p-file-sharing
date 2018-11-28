@@ -9,13 +9,16 @@ import java.io.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Client extends Thread{
-    Socket socket;
-    DataOutputStream out;
-    PeerInfo peerInfo;
+    private int myId;
+    private Socket socket;
+    private DataOutputStream out;
+    // server info
+    private PeerInfo peerInfo;
 
     private ConcurrentLinkedQueue<ActualMessage> messageQueue;
 
-    public Client(PeerInfo info) {
+    public Client(int id, PeerInfo info) {
+        this.myId = id;
         this.peerInfo = info;
         this.messageQueue = new ConcurrentLinkedQueue<>();
     }
@@ -28,7 +31,8 @@ public class Client extends Thread{
             out = new DataOutputStream(socket.getOutputStream());
 
             // send handshake message
-            HandshakeMessage hsMsg = new HandshakeMessage(peerInfo.getPeerId());
+            HandshakeMessage hsMsg = new HandshakeMessage(myId);
+
             out.write(hsMsg.toByteArray());
             out.flush();
 

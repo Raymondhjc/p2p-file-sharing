@@ -5,19 +5,15 @@ import messages.MessageHandler;
 
 import java.net.ServerSocket;
 
-public class Server {
+public class Server{
 
-    ServerSocket serverSocket;
-    private int peerId;
-
-    public Server(int peerId) {
-        this.peerId = peerId;
-    }
+    private ServerSocket serverSocket;
 
     public void startServer(int port, MessageHandler messageHandler, LogWriter logWriter) throws Exception{
         serverSocket = new ServerSocket(port);
+        System.out.println("Server running on port " + port);
         while(true) {
-            ServerConnection sc = new ServerConnection(serverSocket.accept(), peerId, messageHandler, logWriter);
+            ServerConnection sc = new ServerConnection(serverSocket.accept(), messageHandler, logWriter);
             sc.start();
         }
     }

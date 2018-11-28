@@ -18,8 +18,8 @@ public class HandshakeMessage {
             throw new Exception("invalid handshake message length");
         }
         String header = new String(Arrays.copyOfRange(bytes, 0, 18), "UTF-8");
-        if(header.equals("P2PFILESHARINGPROJ")) {
-            throw new Exception("wrong handshake header: " + header);
+        if(!header.equals("P2PFILESHARINGPROJ")) {
+            throw new Exception("wrong handshake header:" + header);
         }
         peerId = ByteBuffer.wrap(Arrays.copyOfRange(bytes, 28, 32)).getInt();
     }
@@ -30,7 +30,7 @@ public class HandshakeMessage {
         try {
             bytes.write(header.getBytes("UTF-8"));
             bytes.write(new byte[10]);
-            bytes.write(this.peerId);
+            bytes.write(ByteBuffer.allocate(4).putInt(peerId).array());
         } catch(Exception e) {
             System.out.println("writing handshake message error");
         }

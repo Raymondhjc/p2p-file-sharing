@@ -11,16 +11,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class ServerConnection extends Thread {
     private Socket connection;
     private DataInputStream in;
-    private int pid;
 
     private MessageHandler messageHandler;
     private LogWriter logWriter;
 
     private ConcurrentLinkedQueue<byte[]> messageQueue;
 
-    ServerConnection(Socket connection, int pid, MessageHandler messageHandler, LogWriter logWriter) {
+    ServerConnection(Socket connection, MessageHandler messageHandler, LogWriter logWriter) {
         this.connection = connection;
-        this.pid = pid;
         this.logWriter = logWriter;
         this.messageHandler = messageHandler;
         this.messageQueue = new ConcurrentLinkedQueue<>();
@@ -28,18 +26,19 @@ public class ServerConnection extends Thread {
     @Override
     public void run() {
         try {
+            System.out.println("new connection");
             // if skip, should add while(true) here, waiting for handshake message
             in = new DataInputStream(connection.getInputStream());
             int peerId = -1;
-            while(peerId == -1) {
-                try {
+            try {
+                while(peerId == -1) {
                     byte[] bytes = new byte[32];
                     in.readFully(bytes);
                     peerId = messageHandler.handleHandShakeMessage(bytes);
                     // TODO log
-                } catch (Exception e) {
-                    System.out.println("illegal handshake message. " + e);
                 }
+            } catch (Exception e) {
+                System.out.println("illegal handshake message. " + e);
             }
             try {
                 while(true) {
@@ -56,7 +55,7 @@ public class ServerConnection extends Thread {
             }
 
         } catch (IOException ioException) {
-            System.out.println("Disconnect with connections.Client " + pid);
+            System.out.println("Disconnect with connections.Client ");
         }
     }
 }
