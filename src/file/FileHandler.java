@@ -44,7 +44,7 @@ public class FileHandler {
         int pieceSize = commonInfo.getPieceSize();
         int fileSize = commonInfo.getFileSize();
         RandomAccessFile read = new RandomAccessFile(myFile, "r");
-        int offset = pieceIndex * pieceSize;
+        read.seek(pieceIndex * pieceSize);
 
         byte[] buffer;
         int remainingBytes = fileSize - pieceIndex * pieceSize;
@@ -53,8 +53,7 @@ public class FileHandler {
         } else {
             buffer = new byte[pieceSize];
         }
-        int length = buffer.length;
-        read.read(buffer, offset, length);
+        read.read(buffer);
         read.close();
         return buffer;
     }
@@ -71,7 +70,8 @@ public class FileHandler {
         RandomAccessFile read = new RandomAccessFile(myFile, "rws");
         int offset = pieceIndex * pieceSize;
         int length = pieceData.length;
-        read.write(pieceData, offset, length);
+        read.seek(offset);
+        read.write(pieceData, 0, length);
         read.close();
     }
 }
