@@ -109,19 +109,19 @@ public class Peer implements MessageHandler{
         getPereferPeersTimer.schedule(new TimerTask() {
             @Override
             public void run() {
+                System.out.println(myPeerInfo.getPeerId() + " getPreferredPeers started");
                 Vector<Integer> nextPreferredNeighbors = new Vector<>();
                 if (myPeerInfo.hasFile()) {
-                    preferredNeighbors.clear();
                     if (interested.size() > 0) {
                         Vector<Integer> tempOfInterest = new Vector<>();
                         for(int interest : interested) {
                             tempOfInterest.add(interest);
                         }
                         while (nextPreferredNeighbors.size() < commonInfo.getNumberOfPreferredNeighbors()) {
-                            if (tempOfInterest.isEmpty()) {break;}
-                            int randomIndex = new Random().nextInt(interested.size());
+                            if (tempOfInterest.size() == 0) {break;}
+                            int randomIndex = new Random().nextInt(tempOfInterest.size());
                             nextPreferredNeighbors.add(tempOfInterest.get(randomIndex));
-                            tempOfInterest.remove(randomIndex);
+                            tempOfInterest.remove(tempOfInterest.get(randomIndex));
                         }
                     }
                 } else {
@@ -136,14 +136,20 @@ public class Peer implements MessageHandler{
                     }
                 }
                 for (Integer newPreferredNeighbor : nextPreferredNeighbors) {
+                    System.out.println(myPeerInfo.getPeerId() + " newPreferredNeighbor " + newPreferredNeighbor);
+
                     if (!preferredNeighbors.contains(newPreferredNeighbor)) {
                         // new comer
+                        System.out.println(myPeerInfo.getPeerId() + " send unchockmessage to newPreferredNeighbor " + newPreferredNeighbor);
                         clients.get(newPreferredNeighbor).sendMessage(MessageFactory.unchockMessage());
                     }
                 }
 
                 for (Integer oldPreferredNeighbor : preferredNeighbors) {
+                    System.out.println(myPeerInfo.getPeerId() + " oldPreferredNeighbor " + oldPreferredNeighbor);
                     if (!nextPreferredNeighbors.contains(oldPreferredNeighbor)) {
+                        System.out.println(myPeerInfo.getPeerId() + " send chockmessage to oldPreferredNeighbor " + oldPreferredNeighbor);
+
                         clients.get(oldPreferredNeighbor).sendMessage(MessageFactory.chockMessage());
                     }
                 }
@@ -173,9 +179,18 @@ public class Peer implements MessageHandler{
                             break;
                         }
                     }
+                } else {
+                    if (myPeerInfo.hasFile() && bitMap.size() == peerInfoMap.size()) {
+                        try {
+                            server.closeServer();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
                 try {
-                    if(clients.size() != 0 && newOptimisticallyUnchokedNeighbor != -1) {
+                    if(clients.size() != 0 && newOptimisticallyUnchokedNeighbor != -1 && newOptimisticallyUnchokedNeighbor != optimisticallyUnchockedNeighbor) {
+                        System.out.println(myPeerInfo.getPeerId() + " send unchoke to newOptimisticallyUnchokedNeighbor " + newOptimisticallyUnchokedNeighbor);
                         clients.get(newOptimisticallyUnchokedNeighbor).sendMessage(MessageFactory.unchockMessage());
                     }
                 } catch (Exception e) {
@@ -184,7 +199,8 @@ public class Peer implements MessageHandler{
                 if (!preferredNeighbors.contains(optimisticallyUnchockedNeighbor)) {
                     try {
                         if(clients.size() != 0 && optimisticallyUnchockedNeighbor != -1) {
-                            clients.get(newOptimisticallyUnchokedNeighbor).sendMessage(MessageFactory.chockMessage());
+
+                            clients.get(optimisticallyUnchockedNeighbor).sendMessage(MessageFactory.chockMessage());
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -271,6 +287,7 @@ public class Peer implements MessageHandler{
     }
 
     private ActualMessage handleUnchockMessage(byte[] payload, int peerId) {
+        System.out.println("un " + peerId);
         logWriter.unchoking(myId, peerId);
         return requestPiece(peerId);
     }
@@ -300,20 +317,19 @@ public class Peer implements MessageHandler{
     }
 
     private ActualMessage handleBitfieldMessage(byte[] payload, int peerId) {
-        bitMap.put(peerId, new boolean[commonInfo.getFileSize()/commonInfo.getPieceSize() + 1]);
+        bitMap.put(peerId, new boolean[(commonInfo.getFileSize() + commonInfo.getPieceSize() - 1)/commonInfo.getPieceSize()]);
         boolean interestFlag = false;
+        byte[] array = new byte[payload.length * 8];
         for (int i = 0; i < payload.length; i++) {
-            byte[] array = new byte[8];
             for (int k = 7; k >= 0; k--) {
-                array[k] = (byte)(payload[i] & 1);
+                array[k + i * 8] = (byte) (payload[i] & 1);
                 payload[i] = (byte) (payload[i] >> 1);
             }
-
-            for (int j = 0; j < 8; j++) {
-                if (array[j] == 1) {
-                    bitMap.get(peerId)[i * 8 + j] = true;
-                    if (!myBitField[i * 8 + j]) interestFlag = true;
-                }
+        }
+        for (int i = 0; i < bitMap.get(peerId).length; i++) {
+            if (array[i] == 1) {
+                bitMap.get(peerId)[i] = true;
+                if (!myBitField[i]) interestFlag = true;
             }
         }
         if (interestFlag) return MessageFactory.interestedMessage();
@@ -341,11 +357,10 @@ public class Peer implements MessageHandler{
         updateBitField(Arrays.copyOfRange(payload, 0, 4));
 
         // finally should send not interested to some nodes
-        int currentPieceNum = 0;
         int len = preferredNeighbors.size();
+        int currentPieceNum = countPiece();
         for(int i = 0; i < len; i++) {
             int preferredNeighborID = preferredNeighbors.get(i);
-            currentPieceNum = countPiece();
             if(currentPieceNum == myBitField.length || containAllNeighborFiles(preferredNeighborID)) {
                 ActualMessage respMessage = MessageFactory.uninterestedMessage();
                 clients.get(peerId).sendMessage(respMessage);

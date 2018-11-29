@@ -16,8 +16,13 @@ public class ActualMessage {
     }
 
     public ActualMessage(byte[] bytes) {
-        type = ByteBuffer.wrap(Arrays.copyOfRange(bytes, 0, 1)).get();
-        payload = Arrays.copyOfRange(bytes, 1, bytes.length);
+//        type = ByteBuffer.wrap(Arrays.copyOfRange(bytes, 0, 1)).get();
+//        payload = Arrays.copyOfRange(bytes, 1, bytes.length);
+        byte[] typeField = Arrays.copyOfRange(bytes, 0, 1);
+        this.type = ByteBuffer.wrap(typeField).get();
+        if (bytes.length > 1) {
+            this.payload = Arrays.copyOfRange(bytes, 1, bytes.length);
+        }
     }
 
     ActualMessage (int type, byte[] payload) {
@@ -28,12 +33,15 @@ public class ActualMessage {
     public byte[] toByteArray() {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try {
+            // length field
             if(this.payload == null) {
                 bytes.write(ByteBuffer.allocate(4).putInt(1).array());
             } else {
-                bytes.write(ByteBuffer.allocate(4).putInt(payload.length).array());
+                bytes.write(ByteBuffer.allocate(4).putInt(payload.length + 1).array());
             }
+            // type field
             bytes.write(this.type);
+            // payload field
             if(payload != null) {
                 bytes.write(this.payload, 0, this.payload.length);
             }
@@ -41,6 +49,8 @@ public class ActualMessage {
             System.out.println("writing actual message error");
             e.printStackTrace();
         }
+        for(byte b : bytes.toByteArray())
+        System.out.print(Byte.toUnsignedInt(b) + " ");
         return bytes.toByteArray();
     }
 }

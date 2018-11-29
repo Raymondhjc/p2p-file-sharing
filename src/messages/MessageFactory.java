@@ -11,9 +11,7 @@ import java.util.Vector;
 public class MessageFactory {
 
     public static ActualMessage requestMessage(int pieceIndex) {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        bytes.write(pieceIndex);
-        byte[] payload = bytes.toByteArray();
+        byte[] payload = ByteBuffer.allocate(4).putInt(pieceIndex).array();
         return new ActualMessage(6, payload);
     }
 
@@ -39,7 +37,6 @@ public class MessageFactory {
     }
 
     public static ActualMessage unchockMessage() {
-        System.out.println("sss");
         return new ActualMessage(1, null);
     }
 

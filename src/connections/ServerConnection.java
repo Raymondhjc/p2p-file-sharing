@@ -47,6 +47,9 @@ public class ServerConnection extends Thread {
                     int len = in.readInt();
                     byte[] bytes = new byte[len];
                     in.readFully(bytes);
+                    for(byte b : bytes) {
+                        System.out.print(Byte.toUnsignedInt(b) + " ");
+                    }
                     messageQueue.add(bytes);
                     while(!messageQueue.isEmpty()) {
                         messageHandler.handleActualMessage(messageQueue.poll(), peerId);
