@@ -60,18 +60,20 @@ public class FileHandler {
 
 
     public void writePiece(int pieceIndex, int writeToID, byte[] pieceData) throws IOException {
-        String filename = "peer_" + writeToID + "/" + "peer_" + writeToID;
-        File myFile = new File(filename);
-        if(!myFile.exists()) {
-            createFile(writeToID);
-        }
+        synchronized (this) {
+            String filename = "peer_" + writeToID + "/" + "peer_" + writeToID;
+            File myFile = new File(filename);
+            if(!myFile.exists()) {
+                createFile(writeToID);
+            }
 
-        int pieceSize = commonInfo.getPieceSize();
-        RandomAccessFile read = new RandomAccessFile(myFile, "rws");
-        int offset = pieceIndex * pieceSize;
-        int length = pieceData.length;
-        read.seek(offset);
-        read.write(pieceData, 0, length);
-        read.close();
+            int pieceSize = commonInfo.getPieceSize();
+            RandomAccessFile read = new RandomAccessFile(myFile, "rws");
+            int offset = pieceIndex * pieceSize;
+            int length = pieceData.length;
+            read.seek(offset);
+            read.write(pieceData, 0, length);
+            read.close();
+        }
     }
 }
