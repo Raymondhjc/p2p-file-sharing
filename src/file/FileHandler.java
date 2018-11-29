@@ -21,7 +21,7 @@ public class FileHandler {
 
     public void createFile(int peerID) {
         createSubdir(peerID);
-        String filename = "peer_" + peerID + "/" + "peer_" + peerID;
+        String filename = "peer_" + peerID + "/" + commonInfo.getFileName();
         File file = new File(filename);
 
         try {
@@ -35,7 +35,7 @@ public class FileHandler {
 
 
     public byte[] readPiece(int pieceIndex, int readFromID) throws IOException {
-        String filename = "peer_" + readFromID + "/" + "peer_" + readFromID;
+        String filename = "peer_" + readFromID + "/" + commonInfo.getFileName();
         File myFile = new File(filename);
         if(!myFile.exists()) {
             createFile(readFromID);
@@ -61,7 +61,7 @@ public class FileHandler {
 
     public void writePiece(int pieceIndex, int writeToID, byte[] pieceData) throws IOException {
         synchronized (this) {
-            String filename = "peer_" + writeToID + "/" + "peer_" + writeToID;
+            String filename = "peer_" + writeToID + "/" + commonInfo.getFileName();
             File myFile = new File(filename);
             if(!myFile.exists()) {
                 createFile(writeToID);

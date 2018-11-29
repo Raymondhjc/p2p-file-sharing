@@ -49,8 +49,6 @@ public class ActualMessage {
             System.out.println("writing actual message error");
             e.printStackTrace();
         }
-        for(byte b : bytes.toByteArray())
-        System.out.print(Byte.toUnsignedInt(b) + " ");
         return bytes.toByteArray();
     }
 }

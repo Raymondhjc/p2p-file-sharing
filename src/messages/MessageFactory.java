@@ -63,4 +63,9 @@ public class MessageFactory {
         System.arraycopy(content, 0, newPayload, payload.length, content.length);
         return new ActualMessage(7, newPayload);
     }
+
+    public static ActualMessage haveMessage(int pieceIndex) {
+        byte[] payload = ByteBuffer.allocate(4).putInt(pieceIndex).array();
+        return new ActualMessage(4, payload);
+    }
 }

@@ -109,7 +109,6 @@ public class Peer implements MessageHandler{
         getPereferPeersTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                System.out.println(myPeerInfo.getPeerId() + " getPreferredPeers started");
                 Vector<Integer> nextPreferredNeighbors = new Vector<>();
                 if (myPeerInfo.hasFile()) {
                     if (interested.size() > 0) {
@@ -190,7 +189,6 @@ public class Peer implements MessageHandler{
                 }
                 try {
                     if(clients.size() != 0 && newOptimisticallyUnchokedNeighbor != -1 && newOptimisticallyUnchokedNeighbor != optimisticallyUnchockedNeighbor) {
-                        System.out.println(myPeerInfo.getPeerId() + " send unchoke to newOptimisticallyUnchokedNeighbor " + newOptimisticallyUnchokedNeighbor);
                         clients.get(newOptimisticallyUnchokedNeighbor).sendMessage(MessageFactory.unchockMessage());
                     }
                 } catch (Exception e) {
@@ -199,7 +197,6 @@ public class Peer implements MessageHandler{
                 if (!preferredNeighbors.contains(optimisticallyUnchockedNeighbor)) {
                     try {
                         if(clients.size() != 0 && optimisticallyUnchockedNeighbor != -1) {
-
                             clients.get(optimisticallyUnchockedNeighbor).sendMessage(MessageFactory.chockMessage());
                         }
                     } catch (Exception e) {
@@ -287,7 +284,6 @@ public class Peer implements MessageHandler{
     }
 
     private ActualMessage handleUnchockMessage(byte[] payload, int peerId) {
-        System.out.println("un " + peerId);
         logWriter.unchoking(myId, peerId);
         return requestPiece(peerId);
     }
@@ -308,6 +304,9 @@ public class Peer implements MessageHandler{
 
     private ActualMessage handleHaveMessage(byte[] payload, int peerId) {
         int index = ByteBuffer.wrap(payload).getInt();
+        if(!bitMap.containsKey(peerId)) {
+            bitMap.put(peerId, new boolean[(commonInfo.getFileSize() + commonInfo.getPieceSize() - 1)/commonInfo.getPieceSize()]);
+        }
         logWriter.receiveHaveMessage(myId, peerId, index);
         bitMap.get(peerId)[index] = true;
         if(!myBitField[index]) {
@@ -357,23 +356,22 @@ public class Peer implements MessageHandler{
         updateBitField(Arrays.copyOfRange(payload, 0, 4));
 
         // finally should send not interested to some nodes
-        int len = preferredNeighbors.size();
         int currentPieceNum = countPiece();
-        for(int i = 0; i < len; i++) {
-            int preferredNeighborID = preferredNeighbors.get(i);
-            if(currentPieceNum == myBitField.length || containAllNeighborFiles(preferredNeighborID)) {
-                ActualMessage respMessage = MessageFactory.uninterestedMessage();
-                clients.get(peerId).sendMessage(respMessage);
-            }
-        }
-
-        if(!containAllNeighborFiles(peerId)) {
-            if(preferredNeighbors.contains(peerId)) {
-                return requestPiece(peerId);
-            }
+        if(currentPieceNum == myBitField.length) {
+            myPeerInfo.setHasFile(true);
         }
         logWriter.downloadPiece(myId, peerId, pieceIndex, currentPieceNum);
-        return MessageFactory.uninterestedMessage();
+        for(int idInMap : bitMap.keySet()) {
+            // send have message
+            clients.get(idInMap).sendMessage(MessageFactory.haveMessage(pieceIndex));
+            if(containAllNeighborFiles(idInMap)) {
+                clients.get(idInMap).sendMessage(MessageFactory.uninterestedMessage());
+            }
+        }
+        if(!containAllNeighborFiles(peerId)) {
+            return requestPiece(peerId);
+        }
+        return null;
     }
 
     private void updateBitField(byte[] payload) {
@@ -383,16 +381,16 @@ public class Peer implements MessageHandler{
 
     private int countPiece() {
         int cnt = 0;
-        for(boolean hasFile : myBitField) {
-            if(hasFile) {
+        for(boolean b : myBitField) {
+            if(b) {
                 ++cnt;
             }
         }
         return cnt;
     }
 
-    private boolean containAllNeighborFiles(int neighborId) {
-        boolean[] neighborBitField = bitMap.get(neighborId);
+    private boolean containAllNeighborFiles(int idInMap) {
+        boolean[] neighborBitField = bitMap.get(idInMap);
         int len = neighborBitField.length;
         for(int i = 0; i < len; i++) {
             if(neighborBitField[i]) {
